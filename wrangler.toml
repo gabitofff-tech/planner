@@ -1,0 +1,16 @@
+name = "tiho-planner"
+main = "server/worker.js"
+compatibility_date = "2026-10-01"
+[assets]
+binding = "ASSETS"
+directory = "./dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+[[d1_databases]]
+binding = "DB"
+database_name = "planner"
+database_id = "5026c683-ff5d-4cc7-a85b-b88fb42116d4"
+[ai]
+binding = "AI"
+[triggers]
+crons = ["*/5 * * * *"]
