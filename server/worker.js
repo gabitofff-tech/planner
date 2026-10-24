@@ -269,7 +269,7 @@ async function telegram(env, method, body) {
   return data.result;
 }
 export const webhookSecret = (token) => sha(`planner-webhook:${token}`);
-function moscow() {
+function moscow(timestamp = Date.now()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Moscow",
     year: "numeric",
@@ -278,7 +278,7 @@ function moscow() {
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
-  }).formatToParts(new Date());
+  }).formatToParts(new Date(timestamp));
   const get = (k) => parts.find((p) => p.type === k).value;
   return {
     date: `${get("year")}-${get("month")}-${get("day")}`,
@@ -439,11 +439,11 @@ async function notion(token, path, body, method = "POST") {
   if (!r.ok) throw Error(`Notion: HTTP ${r.status}`);
   return r.json();
 }
-export async function scheduled(env) {
+export async function scheduled(env, timestamp = Date.now()) {
   await schema(env.DB);
   const users = (await env.DB.prepare("SELECT * FROM users").all()).results;
   let budget = 35;
-  const now = moscow();
+  const now = moscow(timestamp);
   for (const u of users) {
     if (u.notion && budget > 0) {
       const pending = [];
@@ -537,7 +537,16 @@ export async function scheduled(env) {
           Number(h.reminder.slice(0, 2)) * 60 -
           Number(h.reminder.slice(3));
         if (diff < 0 || diff >= 5) continue;
-        const id = `reminder/${u.id}/${row.id}/${now.date}`;
+        const dayId = `reminder/${u.id}/${row.id}/${now.date}`;
+        // Time edits create a new reminder; unrelated edits must not resend it.
+        const id = `${dayId}/${h.reminder}`;
+        // Preserve delivery history from versions using one event per day.
+        const legacy = await env.DB.prepare(
+          "SELECT created_at FROM events WHERE id=?",
+        )
+          .bind(dayId)
+          .first();
+        if (legacy && row.updated_at <= legacy.created_at) continue;
         const exists = await env.DB.prepare("SELECT id FROM events WHERE id=?")
           .bind(id)
           .first();
