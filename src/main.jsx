@@ -2661,19 +2661,31 @@ function Field({ label, children }) {
   );
 }
 function Clock({ value, onChange, optional }) {
+  const formatInput = (event) => {
+    const raw = event.target.value;
+    // Accept both four keypad digits and pasted times such as 9:30.
+    if (/^\d:[0-5]\d$/.test(raw)) {
+      onChange(`0${raw}`);
+      return;
+    }
+    const digits = raw.replace(/\D/g, "").slice(0, 4);
+    onChange(digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits);
+  };
   return (
     <input
       type="text"
       inputMode="numeric"
       placeholder={optional ? "Без времени" : "09:00"}
+      title="Введите 4 цифры: например, 1830 → 18:30"
       pattern="([01][0-9]|2[0-3]):[0-5][0-9]"
       required={!optional}
       maxLength="5"
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={formatInput}
     />
   );
 }
+
 function DayPicker({ days = [0, 1, 2, 3, 4, 5, 6], onChange }) {
   return (
     <div className="day-picker">
